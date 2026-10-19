@@ -41,8 +41,15 @@ next-env.d.ts
 *.tsbuildinfo
 # Checkout-local execution profile and tool state; never publish them.
 /.sites-runtime/
-/.agents/
+/.agents/*
+!/.agents/skills/
+/.agents/skills/*
+!/.agents/skills/world-vocabulary/
+/.agents/skills/world-vocabulary/*
+!/.agents/skills/world-vocabulary/SKILL.md
 /.codex/
 /.openai/
 /outputs/
 /work/
+# Personal vocabulary exports stay on this device.
+/WORLD-existing-word-list-184*.txt

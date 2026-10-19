@@ -1,9 +1,9 @@
 'use client';
 import { useRef, useState } from 'react';
-import { Volume2, RotateCw, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Volume2, RotateCw, ArrowLeft, ArrowRight, Mic } from 'lucide-react';
 import { wordLanguage, type Word } from '@/lib/learning';
 
-export function Flashcard({word,reverse=false,disabled,onSpeak,onGrade}:{word:Word;reverse?:boolean;disabled:boolean;onSpeak:()=>void;onGrade:(known:boolean)=>void}){
+export function Flashcard({word,reverse=false,disabled,onSpeak,onPractice,listening,transcript,speechSupported,onGrade}:{word:Word;reverse?:boolean;disabled:boolean;onSpeak:()=>void;onPractice:()=>void;listening:boolean;transcript:string;speechSupported:boolean;onGrade:(known:boolean)=>void}){
  const [back,setBack]=useState(false),[offset,setOffset]=useState(0);
  const gesture=useRef<{x:number;y:number}|null>(null),swiped=useRef(false);
  const flip=()=>{if(!disabled)setBack(v=>!v);};
@@ -26,6 +26,7 @@ export function Flashcard({word,reverse=false,disabled,onSpeak,onGrade}:{word:Wo
     <div className="card-footer"><RotateCw size={14}/>{back?'탭하면 앞면으로':'탭해서 뒤집기'}<span>LEVEL {word.level}</span></div>
    </div>
   </div>
+  <div className="card-practice"><button type="button" onClick={onPractice} disabled={disabled||!speechSupported} aria-pressed={listening}><Mic size={17}/>{listening?'듣는 중 · 멈추기':'발음 말해보기'}</button><span role="status">{transcript?`인식된 말: ${transcript}`:speechSupported?'말한 내용은 여기에 표시돼요.':'이 브라우저는 음성 인식을 지원하지 않아요.'}</span></div>
   <div className="card-verdict" aria-live="polite">{Math.abs(offset)>40?(offset>0?'외움 →':'← 모름'):'카드를 넘기며 기억을 확인하세요'}</div>
   <div className="card-actions"><button disabled={disabled} onClick={()=>onGrade(false)}><ArrowLeft size={20}/>모름</button><button className="known" disabled={disabled} onClick={()=>onGrade(true)}>외움<ArrowRight size={20}/></button></div>
  </div>;

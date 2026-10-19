@@ -10,7 +10,9 @@ export function parseContent(text:string) {
   if(!Array.isArray(source))throw Error('JSON 배열 또는 words/items 배열이 필요합니다.');
  }else source=raw.split(/\r?\n/).filter(x=>x.trim()).map(line=>{
   const p=line.includes('\t')?line.split('\t'):line.includes('|')?line.split(/\s*\|\s*/):null;
-  return p?{english:p[0],meaning:p[1],pos:p[2],context:p[3],example:p[3],exampleMeaning:p[4],language:p[5]}:parseImport(line)[0];
+  if(!p)return parseImport(line)[0];
+  if(p.length>=5)return {english:p[0],meaning:p[1],pos:p[2],example:p[3],exampleMeaning:p[4],language:p[5]};
+  return {english:p[0],meaning:p[1],pos:p[2],context:p[3],example:p[3]};
  });
  if(!source.length)throw Error('가져올 단어를 입력해주세요.');
  if(source.length>500)throw Error('한 번에 500개까지 가져올 수 있습니다.');

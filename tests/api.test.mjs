@@ -12,6 +12,7 @@ const get=async(language,query='')=>{const r=await GET(new Request(`http://local
 async function post(language,action,body={}){const state=await get(language);const r=await POST(new Request('http://localhost/api/data',{method:'POST',headers:{'Content-Type':'application/json',origin:'http://localhost'},body:JSON.stringify({action,language,version:state.version,timeZone:'Asia/Seoul',...body})}));return {status:r.status,...await r.json()};}
 let result=await post('en','import',{text:'apple | 사과 | 명사 | An apple. | 사과 하나. | en\n猫 | 고양이 | 명사 | 猫です。 | 고양이입니다. | ja'});
 assert.equal(result.status,200);assert.equal(result.result.added,2);assert.equal(result.state.words.length,1);
+assert.equal(result.state.words[0].pos,'명사');assert.equal(result.state.words[0].example,'An apple.');assert.equal(result.state.words[0].exampleMeaning,'사과 하나.');assert.equal(result.state.words[0].context,'');
 assert.equal((await get('ja')).words.length,1);
 const enSession=(await post('en','start')).result.sessionId;
 const jaSession=(await post('ja','start')).result.sessionId;

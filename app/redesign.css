@@ -26,6 +26,8 @@
 .pwa-controls{display:flex;align-items:center;gap:8px}
 .pwa-controls:empty{display:none}
 .pwa-button{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px;padding:8px 12px;border:1px solid #007346;background:white;color:#007346;font-size:12px;white-space:nowrap}
+.pwa-help{font-size:12px;color:#50675a;white-space:nowrap}
+.redesigned .content>.pwa-controls{margin-bottom:12px}
 .pwa-error{position:fixed;right:20px;bottom:90px;z-index:90;max-width:calc(100vw - 40px);padding:12px;background:#fffef8;border:1px solid #b6c5bc;color:#40534a;font-size:12px;letter-spacing:0}
 .language-switch button{min-height:42px;padding:8px 22px;border:0;background:white;font-weight:650;color:var(--primary)}
 .language-switch button[aria-pressed=true]{background:var(--primary);color:white}
@@ -92,6 +94,10 @@
 .card-example>p.example-meaning{font-size:14px;color:#59695e}
 .card-footer{display:flex;align-items:center;gap:7px;border-top:1px solid #dce1d5;padding-top:16px;font-size:11px;color:#6c796e}
 .card-footer>span{margin-left:auto;font:10px/1.4 monospace;letter-spacing:1px}
+.card-practice{display:flex;align-items:center;gap:12px;margin-top:20px;min-height:42px;color:#66766b;font-size:12px}
+.card-practice>button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:42px;padding:7px 12px;border:1px solid #b6c5bc;background:#fffef8;color:#007346;white-space:nowrap}
+.card-practice>button[aria-pressed=true]{background:#e9f1e7}
+.card-practice>span{overflow-wrap:anywhere}
 .card-verdict{text-align:center;font-size:12px;color:#66766b;min-height:55px;padding-top:28px}
 .card-actions{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:14px}
 .card-actions>button{display:flex;align-items:center;justify-content:center;gap:16px;min-height:60px;border:1px solid #007346;background:transparent;color:#007346;font-weight:600;font-size:17px}
@@ -110,8 +116,8 @@
  .redesigned .content{padding:22px 20px 38px}.development-note{font-size:10px;padding-bottom:18px}.redesigned .daily{padding:14px 0 28px}.redesigned .goal-action-row{gap:12px}.redesigned .goal-number{font-size:96px;letter-spacing:-6px}.redesigned .goal-number>span{font-size:15px;margin-left:10px}.redesigned .goal-start{padding:12px 16px;font-size:14px;min-height:52px}
  .redesigned .study-counts{padding:16px 12px}.redesigned .study-counts>div{padding-right:12px}.redesigned .study-counts>div+div{padding-left:12px}.redesigned .study-counts strong{font-size:24px}.redesigned .study-counts span{font-size:11px}
  .redesigned h1{font-size:34px}.redesigned .word-text strong{font-size:22px}.redesigned .word-status{max-width:110px}.redesigned .history-numbers strong{font-size:38px}.redesigned .settings-header .settings-title{font-size:28px}.redesigned .settings-category{font-size:20px}.redesigned .history-numbers>div{padding-left:12px}.redesigned .export-section{padding:18px}
- .flash-study-main{padding:14px 18px 28px}.flash-study-meta{padding:18px 0 24px}.paper-card{padding:22px;height:clamp(360px,56dvh,540px)}.card-audio{top:18px;right:14px}.card-copy{padding:24px 0}.card-copy>h1{font-size:36px}.card-kicker{font-size:10px}.card-actions{gap:12px}.card-actions>button{min-height:56px}.card-example>p{font-size:17px}
+ .flash-study-main{padding:14px 18px 28px}.flash-study-meta{padding:18px 0 24px}.paper-card{padding:22px;height:clamp(360px,56dvh,540px)}.card-audio{top:18px;right:14px}.card-copy{padding:24px 0}.card-copy>h1{font-size:36px}.card-kicker{font-size:10px}.card-practice{align-items:flex-start;flex-direction:column;gap:6px}.card-actions{gap:12px}.card-actions>button{min-height:56px}.card-example>p{font-size:17px}
 }
 @media(prefers-reduced-motion:reduce){.paper-card{transition:none}}
-@media(max-width:700px){.redesigned .topbar{gap:10px}.topbar-actions{gap:8px}.pwa-button{padding:6px 9px;min-height:38px}.topbar-actions .language-switch button{padding:7px 12px}}
+@media(max-width:700px){.redesigned .topbar{gap:10px}.topbar-actions{gap:8px}.pwa-button{padding:6px 9px;min-height:38px}.pwa-help{font-size:10px;white-space:normal;line-height:1.25;max-width:98px}.topbar-actions .language-switch button{padding:7px 12px}}
 @media(display-mode:standalone){.redesigned .sidebar{padding-top:max(24px,env(safe-area-inset-top))}.flash-study{padding-top:env(safe-area-inset-top)}}

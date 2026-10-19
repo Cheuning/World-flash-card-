@@ -6,8 +6,10 @@ type InstallEvent=Event & { prompt:()=>Promise<void>; userChoice:Promise<{outcom
 
 export function PwaControls(){
  const [install,setInstall]=useState<InstallEvent|null>(null),[installed,setInstalled]=useState(false),[working,setWorking]=useState(false),[waiting,setWaiting]=useState<ServiceWorker|null>(null),[error,setError]=useState('');
+ const [onProduction,setOnProduction]=useState(true);
  const updating=useRef(false);
  useEffect(()=>{
+  setOnProduction(window.location.origin==='https://world-flash-card.vercel.app');
   const display=window.matchMedia('(display-mode: standalone)');
   const updateDisplay=()=>setInstalled(display.matches);
   updateDisplay();display.addEventListener('change',updateDisplay);
@@ -30,6 +32,7 @@ export function PwaControls(){
  async function promptInstall(){if(!install||working)return;setWorking(true);setError('');try{await install.prompt();await install.userChoice;setInstall(null);}catch{setError('브라우저 메뉴에서 WORLD 앱 설치를 선택해주세요.');}finally{setWorking(false);}}
  return <div className="pwa-controls">
   {!installed&&install&&<button className="pwa-button" onClick={promptInstall} disabled={working}><Download size={16}/>{working?'설치 준비 중':'WORLD 설치'}</button>}
+  {!installed&&!install&&(onProduction?<span className="pwa-help">Chrome 메뉴 ⋮ → 앱 설치</span>:<a className="pwa-button" href="https://world-flash-card.vercel.app/">정식 주소에서 앱 설치</a>)}
   {waiting&&<button className="pwa-button" disabled={working} onClick={()=>{setWorking(true);updating.current=true;waiting.postMessage({type:'SKIP_WAITING'});}}><RefreshCw size={16}/>업데이트</button>}
   {error&&<span className="pwa-error" role="status">{error}</span>}
  </div>;
