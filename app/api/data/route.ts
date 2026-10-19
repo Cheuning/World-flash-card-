@@ -34,7 +34,13 @@ async function remoteSource(context: RemoteContext) {
   if (!recordResponse.ok || !revisionResponse.ok) throw new Error('동기화 데이터를 불러오지 못했어요.');
   return { records: records as StoredRecord[], version: Number(revisions?.[0]?.version || 0) };
 }
-async function sourceFor(context: RemoteContext | null) { return context ? remoteSource(context) : localSource(); }
+async function sourceFor(context: RemoteContext | null) {
+  if (context) return remoteSource(context);
+  // Vercel has no durable local SQLite volume. Before login, show a clean
+  // WORLD account instead of attempting to read the development preview DB.
+  if (process.env.NODE_ENV === 'production') return { records: [], version: 0 };
+  return localSource();
+}
 function stateFrom(source: { records: StoredRecord[]; version: number }, language?: Language) {
   const settingsId = language === 'ja' ? 'settings:ja' : 'settings', records = source.records, settings = records.find(record => record.kind === 'settings' && record.id === settingsId);
   const state: State = { version: source.version, words: records.filter(record => record.kind === 'word').map(record => record.data), sessions: records.filter(record => record.kind === 'session').map(record => record.data).sort((a, b) => b.startedAt.localeCompare(a.startedAt)), settings: { ...structuredClone(defaults), ...(settings?.data || {}) }, history: records.filter(record => record.kind === 'history').map(record => record.data).sort((a, b) => a.changedAt.localeCompare(b.changedAt)) };
@@ -83,6 +89,7 @@ export async function POST(req: Request) {
     const origin = req.headers.get('origin'); if (origin && origin !== new URL(req.url).origin) return response({ error: '잘못된 요청입니다.' }, 403);
     if (Number(req.headers.get('content-length') || 0) > 1500000) return response({ error: '입력 내용이 너무 큽니다.' }, 413);
     const context = await remoteContext(req), body: any = await req.json(), language: Language = body.language === 'ja' ? 'ja' : 'en', now = new Date().toISOString();
+    if (!context && process.env.NODE_ENV === 'production') return response({ error: '운영 환경에서는 로그인 후 저장할 수 있어요.' }, 401);
     if (body.action === 'bootstrap') {
       if (!context) return response({ error: '로그인이 필요해요.' }, 401);
       const source = await remoteSource(context); if (source.records.length) return response({ error: '이미 동기화된 데이터가 있어요.' }, 409);
