@@ -41,7 +41,7 @@ export function AuthPanel({ session, onSession, onSignOut }: {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent className="auth-dialog">
         <DialogTitle>WORLD 계정</DialogTitle>
-        <DialogDescription>로그인하면 단어장과 학습 기록을 기기마다 이어서 볼 수 있어요.</DialogDescription>
+        <DialogDescription className="sr-only">이메일 및 비밀번호 로그인</DialogDescription>
         <form className="auth-form" onSubmit={submit}>
           <label>이메일<input type="email" autoComplete="email" required value={email} onChange={e => setEmail(e.target.value)} /></label>
           <label>비밀번호<input type="password" autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} minLength={6} required value={password} onChange={e => setPassword(e.target.value)} /></label>

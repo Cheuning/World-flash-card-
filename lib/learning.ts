@@ -51,6 +51,18 @@ export function syncDailyGoal(state:State,now:string,timeZone?:string){
   if(progress.achieved)s.achievedDay=true;
  }
 }
+// A goal edit changes today's progress immediately, but never removes cards that
+// were already placed in an active learning session.
+export function applyCurrentDayGoal(state:State,now:string,timeZone?:string){
+ const key=learningDayKey(now,state.settings.dayStartHour,timeZone);
+ const baseTarget=Math.min(state.settings.goal,state.words.filter(w=>!w.deletedAt).length);
+ for(const session of state.sessions.filter(s=>(s.dayKey||learningDayKey(s.startedAt,state.settings.dayStartHour,timeZone))===key&&!s.additional)){
+  session.requestedGoal=state.settings.goal;
+  session.dailyTarget=baseTarget;
+  session.studyGoal=baseTarget;
+ }
+ syncDailyGoal(state,now,timeZone);
+}
 export function completionStreak(sessions:Session[],value:string|number|Date,dayStartHour=0,words:Word[]=[],timeZone?:string):number {
  const keys=new Set(sessions.flatMap(s=>s.entries.filter(e=>e.passed).map(e=>e.passedDay||learningDayKey(e.passedAt||s.startedAt,dayStartHour,timeZone))));
  const completed=new Set([...keys].filter(key=>{if(sessions.some(s=>s.dayKey===key&&s.achievedDay))return true;const target=targetOnDay(sessions,words,key,dayStartHour,timeZone);return target>0&&passedIds(sessions,key,dayStartHour,timeZone).size>=target;}));
@@ -101,10 +113,10 @@ export function candidates(words:Word[],settings:Settings,now=Date.now(),random=
  const selected=shuffled.slice(0,settings.goal),newCount=selected.filter(w=>!w.lastStudiedAt).length;
  return {selected,target:selected.length,newCount,reviewCount:selected.length-newCount};
 }
-export function nextQuestion(s:Session,now:string){
+export function nextQuestion(s:Session,now:string,questionId=uuid()){
  const waiting=s.entries.filter(e=>!e.passed); if(!waiting.length){s.endedAt=now;s.question=null;return;}
  const next=waiting.find(e=>e.availableAt<=s.attempts)||[...waiting].sort((a,b)=>a.availableAt-b.availableAt)[0];
- next.appearances++;s.question={id:uuid(),wordId:next.wordId,direction:next.direction||(s.settings.direction==='mixed'?(Math.random()*100<s.settings.enRatio?'en-ko':'ko-en'):s.settings.direction),issuedAt:now,occurrence:next.appearances};
+ next.appearances++;s.question={id:questionId,wordId:next.wordId,direction:next.direction||(s.settings.direction==='mixed'?(Math.random()*100<s.settings.enRatio?'en-ko':'ko-en'):s.settings.direction),issuedAt:now,occurrence:next.appearances};
 }
 export function startSession(state:State,now:string,timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone,additionalCount?:number){
  const key=learningDayKey(now,state.settings.dayStartHour,timeZone),active=state.sessions.find(s=>!s.endedAt);
@@ -128,9 +140,9 @@ export function startSession(state:State,now:string,timeZone=Intl.DateTimeFormat
  const s:Session={id:uuid(),dayKey:key,dailyTarget:progress.target,timeZone,startedAt:now,endedAt:null,settings:structuredClone(state.settings),target:selected.length,requestedGoal:state.settings.goal,entries:selected.map(w=>({wordId:w.id,kind:w.lastStudiedAt?'review':'new',passed:false,appearances:0,availableAt:0})),attempts:0,correct:0,wrong:0,activeMs:0,question:null};
  s.additional=additional;s.studyGoal=additional?progress.completed+selected.length:progress.target;
  s.dailyTarget=progress.baseTarget;
- const enCount=state.settings.direction==='mixed'?Math.round(selected.length*state.settings.enRatio/100):state.settings.direction==='en-ko'?selected.length:0;
- const directions:('en-ko'|'ko-en')[]=selected.map((_,i)=>i<enCount?'en-ko':'ko-en');
- for(let i=directions.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[directions[i],directions[j]]=[directions[j],directions[i]];}
+ const directions:('en-ko'|'ko-en')[]=state.settings.direction==='mixed'
+  ?selected.map((_,i)=>i%2===0?'en-ko':'ko-en')
+  :selected.map(()=>state.settings.direction==='en-ko'?'en-ko':'ko-en');
  s.entries.forEach((e,i)=>e.direction=directions[i]);
  state.sessions.unshift(s);nextQuestion(s,now);return s;
 }
@@ -144,7 +156,7 @@ export function grade(state:State,payload:any,now:string):Attempt {
  s.attempts++;s.activeMs+=responseMs;if(correct){s.correct++;w.correct++;entry.passed=true;entry.passedAt=now;entry.passedDay=learningDayKey(now,state.settings.dayStartHour,s.timeZone);w.level=Math.min(w.level+1,s.settings.intervals.length);w.nextReview=new Date(Date.parse(now)+s.settings.intervals[w.level-1]*86400000).toISOString();}
  else{s.wrong++;w.wrong++;w.level=s.settings.resetMode==='reset'?0:Math.max(0,w.level-s.settings.demoteBy);w.nextReview=now;entry.availableAt=s.attempts+s.settings.retryGap;}
  w.lastStudiedAt=now;
- const a:Attempt={id:uuid(),sessionId:s.id,wordId:w.id,english:w.english,prompt:q.direction==='en-ko'?w.english:w.meaning,expectedAnswer:expected,presentedAt:new Date(shown).toISOString(),issuedAt:q.issuedAt,answeredAt:now,direction:q.direction,answer,correct,responseMs,inputMethod:payload.inputMethod==='voice'?'voice':'typing',levelBefore:before.level,levelAfter:w.level,previousStudyAt:before.lastStudiedAt,elapsedSincePreviousMs:before.lastStudiedAt?Date.parse(now)-Date.parse(before.lastStudiedAt):null,occurrence:q.occurrence,kind:entry.kind,settings:structuredClone(s.settings),settingsVersion:state.history.filter(h=>h.changedAt<=s.startedAt).at(-1)?.id||'initial',judging:'normalized-exact',questionId:q.id};
+ const a:Attempt={id:typeof payload.attemptId==='string'&&payload.attemptId?payload.attemptId:uuid(),sessionId:s.id,wordId:w.id,english:w.english,prompt:q.direction==='en-ko'?w.english:w.meaning,expectedAnswer:expected,presentedAt:new Date(shown).toISOString(),issuedAt:q.issuedAt,answeredAt:now,direction:q.direction,answer,correct,responseMs,inputMethod:payload.inputMethod==='voice'?'voice':'typing',levelBefore:before.level,levelAfter:w.level,previousStudyAt:before.lastStudiedAt,elapsedSincePreviousMs:before.lastStudiedAt?Date.parse(now)-Date.parse(before.lastStudiedAt):null,occurrence:q.occurrence,kind:entry.kind,settings:structuredClone(s.settings),settingsVersion:state.history.filter(h=>h.changedAt<=s.startedAt).at(-1)?.id||'initial',judging:'normalized-exact',questionId:q.id};
  if(payload.inputMethod==='flashcard'){a.inputMethod='flashcard';a.judging='self-assessed';a.answer=correct?'외움':'모름';}
  s.lastFeedback={attemptId:a.id,wordId:w.id,correct,expected,answer,beforeWord:before};return a;
 }

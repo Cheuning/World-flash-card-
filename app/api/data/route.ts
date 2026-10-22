@@ -1,5 +1,5 @@
 import { database } from '@/db/local';
-import { defaults, syncDailyGoal, learningDayKey, startSession, grade, nextQuestion, correctJudgment, validateSettings, importWords, normalize, uuid, wordLanguage, type Language, type State } from '@/lib/learning';
+import { defaults, syncDailyGoal, applyCurrentDayGoal, learningDayKey, startSession, grade, nextQuestion, correctJudgment, validateSettings, importWords, normalize, uuid, wordLanguage, type Language, type State } from '@/lib/learning';
 import { parseContent } from '@/lib/import-content';
 
 export const runtime = 'nodejs';
@@ -97,6 +97,9 @@ export async function POST(req: Request) {
       return response({ state: stateFrom(await remoteSource(context), language), result: { imported: records.length } });
     }
     const source = await sourceFor(context), state = stateFrom(source, language), settingsId = language === 'ja' ? 'settings:ja' : 'settings';
+    // A lost response may cause a queued flashcard answer to be sent again.
+    // The attempt id makes that retry safe without relaxing version protection.
+    if (body.action === 'card' && typeof body.attemptId === 'string' && source.records.some(record => record.kind === 'attempt' && record.id === body.attemptId)) return response({ state: stateFrom(source, language), result: { duplicate: true } });
     if (body.version !== state.version) return response({ error: '다른 창에서 내용이 변경되었습니다. 새로고침 후 다시 시도해주세요.' }, 409);
     const previous = new Map<string, string>(); for (const record of [...state.words, ...state.sessions, ...state.history]) previous.set(record.id, JSON.stringify(record)); previous.set(settingsId, JSON.stringify(state.settings)); previous.delete('initial');
     const extra: { id: string; kind: string; data: any }[] = []; let result: any = {}; const studyAction = ['start', 'answer', 'card', 'correct', 'next'].includes(body.action), timeZone = typeof body.timeZone === 'string' ? body.timeZone : 'Asia/Seoul';
@@ -108,10 +111,10 @@ export async function POST(req: Request) {
       case 'import': { const rows = parseContent(String(body.text || '')); if (rows.length > 500) throw new Error('한 번에 500개까지 가져올 수 있습니다.'); const all = stateFrom(source); state.words = all.words; const activeIds = new Set(all.sessions.filter(session => !session.endedAt).flatMap(session => session.entries.map(entry => entry.wordId))); if (rows.some(row => state.words.some(word => wordLanguage(word) === row.language && normalize(word.english) === normalize(row.english) && activeIds.has(word.id)))) throw new Error('진행 중인 학습에 포함된 단어가 있어요. 학습을 마친 뒤 가져와주세요.'); result = importWords(state, rows, now); break; }
       case 'edit': { const word = state.words.find(word => word.id === body.word.id); if (!word) throw new Error('단어를 찾을 수 없습니다.'); if (state.sessions.some(session => !session.endedAt && session.entries.some(entry => entry.wordId === word.id))) throw new Error('진행 중인 학습을 마친 뒤 이 단어를 수정해주세요.'); const next = parseContent(JSON.stringify([body.word]))[0]; if (next.language !== wordLanguage(word) && word.lastStudiedAt) throw new Error('학습 기록이 있는 항목은 언어를 바꿀 수 없어요. 새 항목으로 추가해주세요.'); const all = stateFrom(source); if (all.words.some(item => item.id !== word.id && wordLanguage(item) === next.language && normalize(item.english) === normalize(next.english))) throw new Error('이미 같은 단어가 있습니다. 일괄 가져오기를 사용하면 연결됩니다.'); Object.assign(word, { ...next, firstAskedAt: next.firstAskedAt || word.firstAskedAt }); break; }
       case 'delete': { const word = state.words.find(word => word.id === body.id); if (!word) throw new Error('단어를 찾을 수 없습니다.'); if (state.sessions.some(session => !session.endedAt && session.entries.some(entry => entry.wordId === word.id))) throw new Error('진행 중인 학습을 마친 뒤 삭제해주세요.'); word.deletedAt = now; break; }
-      case 'settings': { const next = validateSettings(body.settings); if (JSON.stringify(next) !== JSON.stringify(state.settings)) { state.history.push({ language, id: uuid(), changedAt: now, before: structuredClone(state.settings), after: next }); state.settings = next; } break; }
+      case 'settings': { const next = validateSettings(body.settings); if (JSON.stringify(next) !== JSON.stringify(state.settings)) { const goalChanged=next.goal!==state.settings.goal; state.history.push({ language, id: uuid(), changedAt: now, before: structuredClone(state.settings), after: next }); state.settings = next; if(goalChanged)applyCurrentDayGoal(state,now,timeZone); } break; }
       case 'start': result = { sessionId: startSession(state, now, timeZone, body.additionalCount).id }; break;
       case 'answer': { const attempt = grade(state, body, now); extra.push({ id: attempt.id, kind: 'attempt', data: attempt }); break; }
-      case 'card': { const attempt = grade(state, { ...body, inputMethod: 'flashcard' }, now); extra.push({ id: attempt.id, kind: 'attempt', data: attempt }); const session = state.sessions.find(item => item.id === body.sessionId)!; delete session.lastFeedback; nextQuestion(session, now); break; }
+      case 'card': { const attempt = grade(state, { ...body, inputMethod: 'flashcard' }, now); extra.push({ id: attempt.id, kind: 'attempt', data: attempt }); const session = state.sessions.find(item => item.id === body.sessionId)!; delete session.lastFeedback; nextQuestion(session, now, typeof body.nextQuestionId==='string'&&body.nextQuestionId?body.nextQuestionId:undefined); break; }
       case 'correct': { const correction = correctJudgment(state, body.sessionId, now); extra.push({ id: correction.id, kind: 'correction', data: correction }); break; }
       case 'next': { const session = state.sessions.find(item => item.id === body.sessionId); if (!session || !session.lastFeedback) throw new Error('현재 학습을 확인해주세요.'); delete session.lastFeedback; nextQuestion(session, now); break; }
       default: throw new Error('지원하지 않는 요청입니다.');
